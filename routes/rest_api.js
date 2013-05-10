@@ -1,7 +1,13 @@
 	var mongo = require('mongodb');
+	var Step = require('step');
 	var Server = mongo.Server,
 		Db = mongo.Db,
-		BSON = mongo.BSONPure;
+		BSON = mongo.BSONPure,
+		Grid = mongo.Grid,
+		GridStore = mongo.GridStore;
+	// var Formidable = require('formidable');
+	var Util = require('util');
+	var gridform = require('gridform');
 
 	// var MongoClient = require('mongodb').MongoClient,
 	// 	Grid = mongo.Grid,
@@ -31,6 +37,115 @@
 	    });
 	};
 
+	exports.findById = function(req, res) {
+	    var id = req.params.id;
+	    console.log('Retrieving task: ' + id);
+	    db.collection('tasks', function(err, collection) {
+	        collection.findOne({'_id':new BSON.ObjectID(id)}, function(err, item) {
+	            res.send(item);
+	        });
+	    });
+	};
+
+	exports.addTask = function(req, res) {
+	    var task = req.body;
+	    console.log('Adding task: ' + JSON.stringify(task));
+
+	    // TODO: check to see if well formed
+
+	    db.collection('tasks', function(err, collection) {
+	        collection.insert(task, {safe:true}, function(err, result) {
+	            if (err) {
+	                res.send({'error':'An error has occurred'});
+	            } else {
+	                console.log('Success: ' + JSON.stringify(result[0]));
+	                res.send(result[0]);
+	            }
+	        });
+	    });
+	}
+
+	exports.postFile = function(req, res) {
+/*		var form = new Formidable.IncomingForm();
+
+		form.parse(req, function(err, fields, files){
+			if (err){
+				console.log(err);
+				res.send(500, { error: 'Something blew up!' });
+			} else {
+				res.writeHead(200, {'content-type': 'text/plain'});
+      			res.write('received upload:\n\n');
+      			res.end(Util.inspect({fields: fields, files: files}));
+			}
+		})*/
+
+		gridform.db = db;
+		gridform.mongo = mongo;
+
+	    // var incomingForm = req.form;  // it is Formidable form object
+
+	    var incomingForm = gridform();
+
+	    incomingForm.on('error', function(err){
+
+	          console.log(error);  //handle the error
+
+	    })
+
+	    incomingForm.on('fileBegin', function(name, file){
+	         // file.metadata = field.title;
+	         // do your things here when upload starts
+	         console.log('begin file');
+
+	    })
+
+
+	    incomingForm.on('end', function(){
+	         // do stuff after file upload
+	         console.log('end file');
+	    });
+
+	    // Main entry for parsing the files
+	    // needed to start Formidables activity
+	    incomingForm.parse(req, function(err, fields, files){
+			if (err){
+				console.log(err);
+				res.send(500, { error: 'Something blew up!' });
+			} else {
+				var file = files.upload;
+				file.metadata = fields.title;
+
+				res.writeHead(200, {'content-type': 'text/plain'});
+      			res.write('received upload:\n\n');
+      			res.end(Util.inspect({fields: fields, files: files}));
+      			console.log('respond file details');
+      		}
+	    })	
+
+	  //   var newFile = req.files[0];
+	  //   console.log('Posting file: ' + JSON.stringify(newFile));
+
+	  //   // TODO: check to see if well formed
+
+	  //   var fileId = new BSON.ObjectID();
+	  //   var gridStore = new GridStore(db, fileId, "w", {root:'fs'});
+  	// 	gridStore.chunkSize = 1024 * 256;
+
+  	// 	gridStore.open(function(err, gridStore) {
+		 //   Step(
+		 //     function writeData() {
+		 //         gridStore.write(newFile, this);
+		 //     },
+
+		 //     function doneWithWrite() {
+		 //     	console.log("Closing gsW");
+		 //     	gridStore.close(this);
+		 //     	console.log("Closed gsW");
+		 //     	res.send(200);
+		 //     }
+			// )
+		// });
+	}
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // Populate database with sample data -- Only used once: the first time the application is started.
